@@ -1947,4 +1947,9 @@
                  EnumTestMsg_MyEnum_NegTwo);
 }
 
+- (void)testOneBasedEnumHolder {
+  MessageWithOneBasedEnum *enumMsg = [MessageWithOneBasedEnum message];
+  XCTAssertEqual(enumMsg.foo, MessageWithOneBasedEnum_OneBasedEnum_One);
+}
+
 @end

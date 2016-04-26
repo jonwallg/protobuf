@@ -401,3 +401,13 @@ message EnumTestMsg {
 
   repeated MyEnum mumble = 4;
 }
+
+message MessageWithOneBasedEnum {
+  enum OneBasedEnum {
+    ONE = 1;
+    TWO = 2;
+  }
+  optional OneBasedEnum foo = 1;
+  // Uncommenting the line below causes -testOneBasedEnumHolder to succeed.
+  // optional OneBasedEnum bar = 2 [default = TWO];
+}
