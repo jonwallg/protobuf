@@ -236,6 +236,15 @@ static NSArray *NewFieldsArrayForHasIndex(int hasIndex,
   return nil;
 }
 
+- (GPBFieldDescriptor *)fieldWithTextFormatName:(NSString *)textFormatName {
+  for (GPBFieldDescriptor *descriptor in fields_) {
+    if ([[descriptor textFormatName] isEqual:textFormatName]) {
+      return descriptor;
+    }
+  }
+  return nil;
+}
+
 - (GPBOneofDescriptor *)oneofWithName:(NSString *)name {
   for (GPBOneofDescriptor *descriptor in oneofs_) {
     if ([descriptor.name isEqual:name]) {
@@ -738,6 +747,20 @@ uint32_t GPBFieldAlternateTag(GPBFieldDescriptor *self) {
     if (strcmp(nameAsCStr, valueName) == 0) {
       if (outValue) {
         *outValue = values_[i];
+      }
+      return YES;
+    }
+  }
+  return NO;
+}
+
+- (BOOL)getValue:(int32_t *)outValue forEnumTextFormatName:(NSString *)textFormatName {
+  for (uint32_t i = 0; i < valueCount_; ++i) {
+    int32_t value = values_[i];
+    NSString *name = [self textFormatNameForValue:value];
+    if ([name isEqual:textFormatName]) {
+      if (outValue) {
+        *outValue = value;
       }
       return YES;
     }

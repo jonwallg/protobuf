@@ -65,6 +65,7 @@ typedef NS_ENUM(uint8_t, GPBFieldType) {
 
 - (nullable GPBFieldDescriptor *)fieldWithNumber:(uint32_t)fieldNumber;
 - (nullable GPBFieldDescriptor *)fieldWithName:(NSString *)name;
+- (nullable GPBFieldDescriptor *)fieldWithTextFormatName:(NSString *)textFormatName;
 - (nullable GPBOneofDescriptor *)oneofWithName:(NSString *)name;
 
 @end
@@ -122,6 +123,7 @@ typedef NS_ENUM(uint8_t, GPBFieldType) {
 - (nullable NSString *)enumNameForValue:(int32_t)number;
 - (BOOL)getValue:(nullable int32_t *)outValue forEnumName:(NSString *)name;
 
+- (BOOL)getValue:(int32_t *)outValue forEnumTextFormatName:(NSString *)textFormatName;
 - (nullable NSString *)textFormatNameForValue:(int32_t)number;
 
 @end

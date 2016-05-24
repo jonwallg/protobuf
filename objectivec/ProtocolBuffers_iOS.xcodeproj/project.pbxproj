@@ -44,6 +44,9 @@
 		8BBEA4BB147C729200C4ADB7 /* libProtocolBuffers.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7461B52E0F94FAF800A0C422 /* libProtocolBuffers.a */; };
 		8BD3981F14BE59D70081D629 /* GPBUnittestProtos.m in Sources */ = {isa = PBXBuildFile; fileRef = 8BD3981E14BE59D70081D629 /* GPBUnittestProtos.m */; };
 		8BF8193514A0DDA600A2C982 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D30AB110D05D00D00671497 /* Foundation.framework */; };
+		AB0420CB2093E15731FC9698 /* GPBTextFormatTest.m in Sources */ = {isa = PBXBuildFile; fileRef = AB0421ABBF6472CA7A6AC345 /* GPBTextFormatTest.m */; };
+		AB0424814974BA7ABA7A7C83 /* GPBTextFormat.m in Sources */ = {isa = PBXBuildFile; fileRef = AB042E7A318F641E619A58BC /* GPBTextFormat.m */; };
+		AB0426A527D29381C137D960 /* GPBTextFormat.h in Headers */ = {isa = PBXBuildFile; fileRef = AB042E8BBA8134CED6203D96 /* GPBTextFormat.h */; };
 		F401DC351A8E5C6F00FCC765 /* GPBArrayTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F401DC341A8E5C6F00FCC765 /* GPBArrayTests.m */; };
 		F41C175D1833D3310064ED4D /* GPBPerfTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F41C175C1833D3310064ED4D /* GPBPerfTests.m */; };
 		F4353D1F1AB88243005A6198 /* GPBDescriptorTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F4353D1E1AB88243005A6198 /* GPBDescriptorTests.m */; };
@@ -181,6 +184,9 @@
 		8BD3981D14BE54220081D629 /* unittest_enormous_descriptor.proto */ = {isa = PBXFileReference; lastKnownFileType = text; name = unittest_enormous_descriptor.proto; path = ../../src/google/protobuf/unittest_enormous_descriptor.proto; sourceTree = "<group>"; };
 		8BD3981E14BE59D70081D629 /* GPBUnittestProtos.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPBUnittestProtos.m; sourceTree = "<group>"; };
 		8BEB5AE01498033E0078BF9D /* GPBRuntimeTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GPBRuntimeTypes.h; sourceTree = "<group>"; };
+		AB0421ABBF6472CA7A6AC345 /* GPBTextFormatTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPBTextFormatTest.m; sourceTree = "<group>"; };
+		AB042E7A318F641E619A58BC /* GPBTextFormat.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPBTextFormat.m; sourceTree = "<group>"; };
+		AB042E8BBA8134CED6203D96 /* GPBTextFormat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GPBTextFormat.h; sourceTree = "<group>"; };
 		F401DC341A8E5C6F00FCC765 /* GPBArrayTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPBArrayTests.m; sourceTree = "<group>"; };
 		F41C175C1833D3310064ED4D /* GPBPerfTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPBPerfTests.m; sourceTree = "<group>"; };
 		F4353D1E1AB88243005A6198 /* GPBDescriptorTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPBDescriptorTests.m; sourceTree = "<group>"; };
@@ -295,6 +301,7 @@
 				7461B5150F94FA7300A0C422 /* Messages */,
 				8BCF334414ED727300BC5317 /* Support */,
 				29B97315FDCFA39411CA2CEA /* Generated */,
+				AB04294459BFE884C40B0209 /* TextFormat */,
 			);
 			name = "Core Source";
 			sourceTree = "<group>";
@@ -476,6 +483,7 @@
 				8B7E6A7E14893DBC00F8884A /* unittest.proto */,
 				8B4248B21A8BD96D00BC1EC6 /* UnitTests-Bridging-Header.h */,
 				7401C1A90F950347006D8281 /* UnitTests-Info.plist */,
+				AB0421ABBF6472CA7A6AC345 /* GPBTextFormatTest.m */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -520,6 +528,15 @@
 			name = Support;
 			sourceTree = "<group>";
 		};
+		AB04294459BFE884C40B0209 /* TextFormat */ = {
+			isa = PBXGroup;
+			children = (
+				AB042E7A318F641E619A58BC /* GPBTextFormat.m */,
+				AB042E8BBA8134CED6203D96 /* GPBTextFormat.h */,
+			);
+			name = TextFormat;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -527,6 +544,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB0426A527D29381C137D960 /* GPBTextFormat.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -736,6 +754,7 @@
 				F4E675D61B21D1620054530B /* Type.pbobjc.m in Sources */,
 				F4E675D51B21D1620054530B /* Struct.pbobjc.m in Sources */,
 				F4E675D71B21D1620054530B /* Wrappers.pbobjc.m in Sources */,
+				AB0424814974BA7ABA7A7C83 /* GPBTextFormat.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -785,6 +804,7 @@
 				F4E675CB1B21D1610054530B /* FieldMask.pbobjc.m in Sources */,
 				8B8B615D17DF7056002EE618 /* GPBARCUnittestProtos.m in Sources */,
 				F4E675C91B21D1610054530B /* Api.pbobjc.m in Sources */,
+				AB0420CB2093E15731FC9698 /* GPBTextFormatTest.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
