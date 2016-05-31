@@ -32,10 +32,5 @@
 
 @class GPBMessage;
 
-@interface GPBTextFormat : NSObject
-
-+ (void)mergeFromTextFormat:(NSString *)textFormat
-                    message:(GPBMessage *)message
-                      error:(NSError **)error;
-
-@end
+BOOL GPBMergeFromTextFormatString(GPBMessage *self, NSString *textFormat,
+                                  BOOL allowUnknownFields, NSError **error);

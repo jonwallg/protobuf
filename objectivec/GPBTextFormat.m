@@ -35,79 +35,199 @@
 #import "GPBUtilities.h"
 #import "GPBUtilities_PackagePrivate.h"
 
-@interface NSScanner (GPBTextFormat)
-- (BOOL)gpb_scanIdentifierIntoString:(NSString **)s;
-@end
+static void MergeField(GPBMessage *self, NSScanner *scanner);
 
-@implementation GPBTextFormat
+static void MergeFieldValues(GPBMessage *self, GPBFieldDescriptor *field, NSScanner *scanner);
 
-+ (void)error:(NSString *)format, ... NS_FORMAT_FUNCTION(1,2) {
-  va_list args;
-  va_start(args, format);
-  [NSException raise:NSParseErrorException format:format arguments:args];
-  va_end(args);
-}
+static void MergeFieldValue(GPBMessage *self, GPBFieldDescriptor *field, NSScanner *scanner);
 
-+ (void)mergeFromTextFormat:(NSString *)textFormat
-                    message:(GPBMessage *)message
-                      error:(NSError **)errorPtr {
+static void Error(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
+
+static id ObtainArray(GPBMessage *self, GPBFieldDescriptor *field);
+
+static BOOL ScanIdentifierIntoString(NSScanner *scanner, NSString **string);
+
+BOOL GPBMergeFromTextFormatString(GPBMessage *self, NSString *textFormat,
+                                  BOOL allowUnknownFields, NSError **errorPtr) {
   NSScanner *scanner = [[[NSScanner alloc] initWithString:textFormat] autorelease];
   scanner.charactersToBeSkipped = [NSCharacterSet whitespaceAndNewlineCharacterSet];
   @try {
     while (![scanner isAtEnd]) {
-      [self mergeField:scanner message:message];
+      MergeField(self, scanner);
     }
   } @catch (NSException *exception) {
     if (errorPtr) {
       *errorPtr = [NSError errorWithDomain:@"foo"
                                       code:1
                                   userInfo:@{ NSLocalizedDescriptionKey : exception.reason}];
+      return NO;
     }
   }
+  return YES;
 }
 
-+ (void)mergeField:(NSScanner *)scanner message:(GPBMessage *)message {
+static void MergeField(GPBMessage *self, NSScanner *scanner) {
   if ([scanner scanString:@"[" intoString:NULL]) {
     // TODO: extension
   } else {
     NSString *name;
     if (![scanner gpb_scanIdentifierIntoString:&name]) {
-      [self error:@"No identifier"];
+      Error(@"No identifier");
     }
-    GPBDescriptor *descriptor = [message descriptor];
+    GPBDescriptor *descriptor = [self descriptor];
     GPBFieldDescriptor *fieldDescriptor = [descriptor fieldWithTextFormatName:name];
     if (!fieldDescriptor) {
-      [self error:@"No field with name: %@", name];
+      Error(@"No field with name: %@", name);
     }
-
     if (![scanner scanString:@":" intoString:NULL]) {
-      [self error:@"No colon"];
+      Error(@"No colon");
     }
-    [self mergeFieldValues:scanner message:message field:fieldDescriptor];
+    MergeFieldValues(self, fieldDescriptor, self);
   }
 }
 
-+ (void)mergeFieldValues:(NSScanner *)scanner
-                 message:(GPBMessage *)message
-                   field:(GPBFieldDescriptor *)field {
+void MergeFieldValues(GPBMessage *self, GPBFieldDescriptor *field, NSScanner *scanner) {
   if (field.fieldType == GPBFieldTypeRepeated && [scanner scanString:@"[" intoString:NULL]) {
     while (true) {
-      [self mergeFieldValue:scanner message:message field:field];
+      MergeFieldValue(self, field, scanner);
       if ([scanner scanString:@"]" intoString:NULL]) {
         // End of list.
         break;
       }
       if (![scanner scanString:@"," intoString:NULL]) {
-        [self error:@"No comma"];
+        Error(@"No comma");
       }
     }
   } else {
-    [self mergeFieldValue:scanner message:message field:field];
+    MergeFieldValue(self, field, scanner);
   }
 }
 
-+ (id)obtainArrayForMessage:(GPBMessage *)message field:(GPBFieldDescriptor *)field {
-  id result = GPBGetObjectIvarWithFieldNoAutocreate(message, field);
+void MergeFieldValue(GPBMessage *self, GPBFieldDescriptor *field, NSScanner *scanner) {
+  switch (field.dataType) {
+    case GPBDataTypeBool:
+      // TODO
+      break;
+    case GPBDataTypeFixed32:
+    case GPBDataTypeUInt32: {
+      unsigned long long longValue;
+      if (![scanner scanUnsignedLongLong:&longValue]) {
+        Error(@"Cannot scan unsigned int value");
+      }
+      assert(longValue < UINT32_MAX);
+      uint32_t value = (uint32_t)longValue;
+      if (field.fieldType == GPBFieldTypeRepeated) {
+        GPBUInt32Array *array = ObtainArray(self, field);
+        [array addValue:value];
+      } else {
+        GPBSetMessageUInt32Field(self, field, value);
+      }
+      break;
+    }
+    case GPBDataTypeSFixed32:
+    case GPBDataTypeSInt32:
+    case GPBDataTypeInt32: {
+      int32_t value;
+      if (![scanner scanInt:&value]) {
+        Error(@"Cannot scan int value");
+      }
+      if (field.fieldType == GPBFieldTypeRepeated) {
+        GPBInt32Array *array = ObtainArray(self, field);
+        [array addValue:value];
+      } else {
+        GPBSetMessageInt32Field(self, field, value);
+      }
+      break;
+    }
+    case GPBDataTypeFixed64:
+    case GPBDataTypeUInt64: {
+      // TODO
+      break;
+    }
+    case GPBDataTypeInt64:
+    case GPBDataTypeSFixed64:
+    case GPBDataTypeSInt64: {
+      // TODO
+      break;
+    }
+    case GPBDataTypeFloat:
+      // TODO
+      break;
+    case GPBDataTypeDouble:
+      // TODO
+      break;
+    case GPBDataTypeBytes:
+      // TODO
+      break;
+    case GPBDataTypeString: {
+      if (![scanner scanString:@"\"" intoString:NULL]) {
+        Error(@"No start quote");
+      }
+      NSString *value = nil;
+      [scanner scanUpToString:@"\"" intoString:&value];
+      if (![scanner scanString:@"\"" intoString:NULL]) {
+        Error(@"No end quote");
+      }
+      if (field.fieldType == GPBFieldTypeRepeated) {
+        NSMutableArray *array = ObtainArray(self, field);
+        [array addObject:value];
+      } else {
+        GPBSetMessageStringField(self, field, value);
+      }
+      break;
+    }
+    case GPBDataTypeMessage: {
+      NSString *endToken = nil;
+      if ([scanner scanString:@"<" intoString:NULL]) {
+        endToken = @">";
+      } else if ([scanner scanString:@"{" intoString:NULL]) {
+        endToken = @"}";
+      } else {
+        Error(@"No start token for submessage: %@", [field textFormatName]);
+      }
+      GPBMessage *submessage = [field.msgClass message];
+      MergeField(submessage, scanner);
+      if (field.fieldType == GPBFieldTypeRepeated) {
+        NSMutableArray *array = ObtainArray(self, field);
+        [array addObject:submessage];
+      } else {
+        GPBSetMessageMessageField(self, field, submessage);
+      }
+      if (![scanner scanString:endToken intoString:NULL]) {
+        Error(@"No end token for submessage %@: %@", [field textFormatName], submessage);
+      }
+      break;
+    }
+    case GPBDataTypeEnum: {
+      int32_t rawValue;
+      if (![scanner scanInt:&rawValue]) {
+        NSString *stringValue;
+        if (!ScanIdentifierIntoString(scanner, &stringValue)) {
+          Error(@"No enum value");
+        }
+        if (![field.enumDescriptor getValue:&rawValue forEnumTextFormatName:stringValue]) {
+          Error(@"Invalid enum value: %@", stringValue);
+        }
+      }
+      if (!field.enumDescriptor.enumVerifier(rawValue)) {
+        Error(@"Invalid enum value: %d", rawValue);
+      }
+      if (field.fieldType == GPBFieldTypeRepeated) {
+        GPBEnumArray *array = ObtainArray(self, field);
+        [array addRawValue:rawValue];
+      } else {
+        GPBSetMessageEnumField(self, field, rawValue);
+      }
+      break;
+    }
+    case GPBDataTypeGroup:
+      // TODO
+      break;
+  }
+}
+
+id ObtainArray(GPBMessage *self, GPBFieldDescriptor *field) {
+  id result = GPBGetObjectIvarWithFieldNoAutocreate(self, field);
   if (!result) {
     switch (field.dataType) {
       case GPBDataTypeBool:
@@ -149,141 +269,12 @@
         result = [[[NSMutableArray alloc] init] autorelease];
         break;
     }
-    GPBSetMessageRepeatedField(message, field, result);
+    GPBSetMessageRepeatedField(self, field, result);
   }
   return result;
 }
 
-+ (void)mergeFieldValue:(NSScanner *)scanner
-                message:(GPBMessage *)message
-                  field:(GPBFieldDescriptor *)field {
-  switch (field.dataType) {
-    case GPBDataTypeBool:
-      // TODO
-      break;
-    case GPBDataTypeFixed32:
-    case GPBDataTypeUInt32: {
-      unsigned long long longValue;
-      if (![scanner scanUnsignedLongLong:&longValue]) {
-        [self error:@"Cannot scan unsigned int value"];
-      }
-      assert(longValue < UINT32_MAX);
-      uint32_t value = (uint32_t)longValue;
-      if (field.fieldType == GPBFieldTypeRepeated) {
-        GPBUInt32Array *array = [self obtainArrayForMessage:message field:field];
-        [array addValue:value];
-      } else {
-        GPBSetMessageUInt32Field(message, field, value);
-      }
-      break;
-    }
-    case GPBDataTypeSFixed32:
-    case GPBDataTypeSInt32:
-    case GPBDataTypeInt32: {
-      int32_t value;
-      if (![scanner scanInt:&value]) {
-        [self error:@"Cannot scan int value"];
-      }
-      if (field.fieldType == GPBFieldTypeRepeated) {
-        GPBInt32Array *array = [self obtainArrayForMessage:message field:field];
-        [array addValue:value];
-      } else {
-        GPBSetMessageInt32Field(message, field, value);
-      }
-      break;
-    }
-    case GPBDataTypeFixed64:
-    case GPBDataTypeUInt64: {
-      // TODO
-      break;
-    }
-    case GPBDataTypeInt64:
-    case GPBDataTypeSFixed64:
-    case GPBDataTypeSInt64: {
-      // TODO
-      break;
-    }
-    case GPBDataTypeFloat:
-      // TODO
-      break;
-    case GPBDataTypeDouble:
-      // TODO
-      break;
-    case GPBDataTypeBytes:
-      // TODO
-      break;
-    case GPBDataTypeString: {
-      if (![scanner scanString:@"\"" intoString:NULL]) {
-        [self error:@"No start quote"];
-      }
-      NSString *value = nil;
-      [scanner scanUpToString:@"\"" intoString:&value];
-      if (![scanner scanString:@"\"" intoString:NULL]) {
-        [self error:@"No end quote"];
-      }
-      if (field.fieldType == GPBFieldTypeRepeated) {
-        NSMutableArray *array = [self obtainArrayForMessage:message field:field];
-        [array addObject:value];
-      } else {
-        GPBSetMessageStringField(message, field, value);
-      }
-      break;
-    }
-    case GPBDataTypeMessage: {
-      NSString *endToken = nil;
-      if ([scanner scanString:@"<" intoString:NULL]) {
-        endToken = @">";
-      } else if ([scanner scanString:@"{" intoString:NULL]) {
-        endToken = @"}";
-      } else {
-        [self error:@"No start token for submessage: %@", [field textFormatName]];
-      }
-      GPBMessage *submessage = [field.msgClass message];
-      [self mergeField:scanner message:submessage];
-      if (field.fieldType == GPBFieldTypeRepeated) {
-        NSMutableArray *array = [self obtainArrayForMessage:message field:field];
-        [array addObject:submessage];
-      } else {
-        GPBSetMessageMessageField(message, field, submessage);
-      }
-      if (![scanner scanString:endToken intoString:NULL]) {
-        [self error:@"No end token for submessage %@: %@", [field textFormatName], submessage];
-      }
-      break;
-    }
-    case GPBDataTypeEnum: {
-      int32_t rawValue;
-      if (![scanner scanInt:&rawValue]) {
-        NSString *stringValue;
-        if (![scanner gpb_scanIdentifierIntoString:&stringValue]) {
-          [self error:@"No enum value"];
-        }
-        if (![field.enumDescriptor getValue:&rawValue forEnumTextFormatName:stringValue]) {
-          [self error:@"Invalid enum value: %@", stringValue];
-        }
-      }
-      if (!field.enumDescriptor.enumVerifier(rawValue)) {
-        [self error:@"Invalid enum value: %d", rawValue];
-      }
-      if (field.fieldType == GPBFieldTypeRepeated) {
-        GPBEnumArray *array = [self obtainArrayForMessage:message field:field];
-        [array addRawValue:rawValue];
-      } else {
-        GPBSetMessageEnumField(message, field, rawValue);
-      }
-      break;
-    }
-    case GPBDataTypeGroup:
-      // TODO
-      break;
-  }
-}
-
-@end
-
-@implementation NSScanner (GPBTextFormat)
-
-- (BOOL)gpb_scanIdentifierIntoString:(NSString **)s {
+BOOL ScanIdentifierIntoString(NSScanner *scanner, NSString **string) {
   static NSCharacterSet *identifierCharacters = nil;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
@@ -291,7 +282,12 @@
     [mutable addCharactersInString:@"_."];
     identifierCharacters = [mutable copy];
   });
-  return [self scanCharactersFromSet:identifierCharacters intoString:s];
+  return [scanner scanCharactersFromSet:identifierCharacters intoString:string];
 }
 
-@end
+void Error(NSString *format, ...) {
+  va_list args;
+  va_start(args, format);
+  [NSException raise:NSParseErrorException format:format arguments:args];
+  va_end(args);
+}

@@ -40,7 +40,7 @@
 
 - (void)parseText:(NSString *)text message:(GPBMessage *)message {
   NSError *error = nil;
-  [GPBTextFormat mergeFromTextFormat:text message:message error:&error];
+  GPBMergeFromTextFormatString(message, text, YES, &error);
   XCTAssertNil(error);
 }
 
