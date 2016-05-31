@@ -35,13 +35,14 @@
 #import "GPBUtilities.h"
 #import "GPBUtilities_PackagePrivate.h"
 
-static void MergeField(GPBMessage *self, NSScanner *scanner);
+static void MergeField(GPBMessage *self, NSScanner *scanner, BOOL allowUnknownFields);
 
 static void MergeFieldValues(GPBMessage *self, GPBFieldDescriptor *field, NSScanner *scanner);
 
 static void MergeFieldValue(GPBMessage *self, GPBFieldDescriptor *field, NSScanner *scanner);
 
 static void Error(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
+static void Warning(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
 
 static id ObtainArray(GPBMessage *self, GPBFieldDescriptor *field);
 
@@ -53,7 +54,7 @@ BOOL GPBMergeFromTextFormatString(GPBMessage *self, NSString *textFormat,
   scanner.charactersToBeSkipped = [NSCharacterSet whitespaceAndNewlineCharacterSet];
   @try {
     while (![scanner isAtEnd]) {
-      MergeField(self, scanner);
+      MergeField(self, scanner, allowUnknownFields);
     }
   } @catch (NSException *exception) {
     if (errorPtr) {
@@ -66,13 +67,17 @@ BOOL GPBMergeFromTextFormatString(GPBMessage *self, NSString *textFormat,
   return YES;
 }
 
-static void MergeField(GPBMessage *self, NSScanner *scanner) {
+static void MergeField(GPBMessage *self, NSScanner *scanner, BOOL allowUnknownFields) {
   if ([scanner scanString:@"[" intoString:NULL]) {
     // TODO: extension
   } else {
     NSString *name;
-    if (![scanner gpb_scanIdentifierIntoString:&name]) {
-      Error(@"No identifier");
+    if (!ScanIdentifierIntoString(scanner, &name)) {
+      if (allowUnknownFields) {
+        Warning(@"No identifier");
+      } else {
+        Error(@"No identifier");
+      }
     }
     GPBDescriptor *descriptor = [self descriptor];
     GPBFieldDescriptor *fieldDescriptor = [descriptor fieldWithTextFormatName:name];
@@ -82,7 +87,7 @@ static void MergeField(GPBMessage *self, NSScanner *scanner) {
     if (![scanner scanString:@":" intoString:NULL]) {
       Error(@"No colon");
     }
-    MergeFieldValues(self, fieldDescriptor, self);
+    MergeFieldValues(self, fieldDescriptor, scanner);
   }
 }
 
@@ -186,7 +191,7 @@ void MergeFieldValue(GPBMessage *self, GPBFieldDescriptor *field, NSScanner *sca
         Error(@"No start token for submessage: %@", [field textFormatName]);
       }
       GPBMessage *submessage = [field.msgClass message];
-      MergeField(submessage, scanner);
+      MergeField(submessage, scanner, NO);
       if (field.fieldType == GPBFieldTypeRepeated) {
         NSMutableArray *array = ObtainArray(self, field);
         [array addObject:submessage];
@@ -289,5 +294,13 @@ void Error(NSString *format, ...) {
   va_list args;
   va_start(args, format);
   [NSException raise:NSParseErrorException format:format arguments:args];
+  va_end(args);
+}
+
+void Warning(NSString *format, ...) {
+  va_list args;
+  va_start(args, format);
+  NSString *msg = [[[NSString alloc] initWithFormat:format arguments:args] autorelease];
+  NSLog(@"WARNING: %@", msg);
   va_end(args);
 }
